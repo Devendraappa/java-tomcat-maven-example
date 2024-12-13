@@ -6,7 +6,7 @@ on:
       - master
     types:
       - opened
-      - synchronize
+      - closed
       - reopened
 
 jobs:
