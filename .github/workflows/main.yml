@@ -1,4 +1,4 @@
-name: Pull Request Testing and Validation
+name: Build and Test
 
 on:
   pull_request:
@@ -9,39 +9,36 @@ on:
       - closed
       - reopened
 
+
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
-    # Define the environment variables at the job level
-    env:
-      GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  # Use the token for authentication
-
     steps:
-    # Step 1: Checkout the repository
-    - name: Checkout the repository
+    - name: Checkout repository
       uses: actions/checkout@v3
 
-    # Step 2: Set up JDK (for Java projects)
-    - name: Set up JDK 11
+    - name: Set up JDK
       uses: actions/setup-java@v3
       with:
-        java-version: '11'
+        java-version: '11'  # Specify the Java version you are using
 
-    # Step 3: Build with Maven
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/*.java') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+
     - name: Build with Maven
       run: mvn clean install
 
-    # Step 4: Run unit tests
-    - name: Run unit tests
-      id: test
-      run: mvn test
-
-    # Step 5: Check test results and handle failure
-    - name: Check if tests passed or failed
+    - name: Run tests and check results
       run: |
-        if grep -q "Tests run:" target/test-classes/test-*.txt; then
-          echo "Tests have run successfully!"
+        mvn test  # This runs the tests
+        if grep -q "Tests run:" target/surefire-reports/*.txt; then
+          echo "Tests passed."
         else
           echo "Tests failed. Please check the test logs for more details."
           exit 1  # Force failure if no tests ran or failed
@@ -75,8 +72,7 @@ jobs:
           echo "Test status: Success" >> $GITHUB_ENV
         else
           echo "Test status: Failure" >> $GITHUB_ENV
+=======
+          exit 1  # Fail the job if tests fail
+
         fi
-        curl -X POST \
-          -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
-          -d "{\"body\": \"Test result: ${{ steps.status.outputs.status }}\"}" \
-          "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
